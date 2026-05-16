@@ -10,9 +10,15 @@ export async function getAllPhotos() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Error fetching photos:', error)
+    console.error('✗ Error fetching photos:')
+    console.error('  Code:', error.code)
+    console.error('  Message:', error.message)
+    console.error('  Details:', error.details)
+    console.error('  Hint:', error.hint)
     return []
   }
+  
+  console.log(`✓ Fetched ${data?.length || 0} photos from database`)
   return data || []
 }
 
@@ -57,14 +63,18 @@ export async function uploadPhoto(file: File): Promise<string | null> {
   const fileName = `${Date.now()}.${fileExt}`
   const filePath = `photos/${fileName}`
 
+  console.log(`⏳ Uploading ${file.name} (${(file.size / 1024).toFixed(2)} KB)...`)
+
   const { error: uploadError } = await supabase.storage
     .from('photos')
     .upload(filePath, file, { upsert: true })
 
   if (uploadError) {
-    console.error('Error uploading photo:', uploadError)
+    console.error('✗ Error uploading photo to storage:', uploadError)
     return null
   }
+
+  console.log(`✓ Photo uploaded to Storage: ${filePath}`)
 
   const { data: publicUrlData } = supabase.storage
     .from('photos')
@@ -83,8 +93,15 @@ export async function savePhotoToDb(imageUrl: string) {
     .select()
 
   if (error) {
-    console.error('Error saving photo:', error)
+    console.error('✗ Error saving photo to database:')
+    console.error('  Code:', error.code)
+    console.error('  Message:', error.message)
+    console.error('  Details:', error.details)
+    console.error('  Hint:', error.hint)
+    console.error('  (RLS ポリシーが無い可能性があります)')
     return null
   }
+  
+  console.log('✓ Photo saved to database')
   return data?.[0] || null
 }
