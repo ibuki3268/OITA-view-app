@@ -133,6 +133,7 @@ export default function SignageScreen() {
           alt="Upload QR Code"
           width={120}
           height={120}
+          loading="eager"
         />
       </div>
 
