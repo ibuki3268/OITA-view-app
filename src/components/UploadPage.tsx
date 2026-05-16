@@ -4,8 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { uploadPhoto, savePhotoToDb } from '@/lib/api'
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024
-
 export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -30,14 +28,6 @@ export default function UploadPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.size > MAX_FILE_SIZE) {
-        setSelectedFile(null)
-        setPreview(null)
-        setError('画像は5MB以下にしてください')
-        e.target.value = ''
-        return
-      }
-
       setSelectedFile(file)
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -87,12 +77,6 @@ export default function UploadPage() {
     canvasRef.current.toBlob((blob) => {
       if (blob) {
         const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' })
-        if (file.size > MAX_FILE_SIZE) {
-          setError('撮影した画像が5MBを超えました。もう一度撮影してください')
-          stopCamera()
-          return
-        }
-
         setSelectedFile(file)
         setPreview(canvasRef.current!.toDataURL())
         stopCamera()
