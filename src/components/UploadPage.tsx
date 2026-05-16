@@ -1,7 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { uploadPhoto, savePhotoToDb } from '@/lib/api'
+
+const MAX_FILE_SIZE = 500 * 1024
 
 export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -14,10 +17,27 @@ export default function UploadPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [cameraActive, setCameraActive] = useState(false)
 
+  useEffect(() => {
+    return () => {
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream
+        stream.getTracks().forEach((track) => track.stop())
+      }
+    }
+  }, [])
+
   // ファイル選択時の処理
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        setSelectedFile(null)
+        setPreview(null)
+        setError('画像は500KB以下にしてください')
+        e.target.value = ''
+        return
+      }
+
       setSelectedFile(file)
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -43,6 +63,15 @@ export default function UploadPage() {
     }
   }
 
+  const stopCamera = () => {
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream
+      stream.getTracks().forEach((track) => track.stop())
+      videoRef.current.srcObject = null
+    }
+    setCameraActive(false)
+  }
+
   // 写真撮影
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return
@@ -58,15 +87,17 @@ export default function UploadPage() {
     canvasRef.current.toBlob((blob) => {
       if (blob) {
         const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' })
+        if (file.size > MAX_FILE_SIZE) {
+          setError('撮影した画像が500KBを超えました。もう一度撮影してください')
+          stopCamera()
+          return
+        }
+
         setSelectedFile(file)
         setPreview(canvasRef.current!.toDataURL())
-        setCameraActive(false)
-        if (videoRef.current?.srcObject) {
-          const stream = videoRef.current.srcObject as MediaStream
-          stream.getTracks().forEach((track) => track.stop())
-        }
+        stopCamera()
       }
-    }, 'image/jpeg')
+    }, 'image/jpeg', 0.85)
   }
 
   // アップロード処理
@@ -88,7 +119,10 @@ export default function UploadPage() {
       }
 
       // DBに保存
-      await savePhotoToDb(imageUrl)
+      const savedPhoto = await savePhotoToDb(imageUrl)
+      if (!savedPhoto) {
+        throw new Error('写真の保存に失敗しました。SupabaseのRLSポリシーを確認してください')
+      }
 
       setSuccess(true)
       setSelectedFile(null)
@@ -106,14 +140,23 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="w-full h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-2">
-          📸 写真を投稿
-        </h1>
-        <p className="text-center text-gray-600 mb-6">
-          あなたが見入った地元の魅力を共有しよう
-        </p>
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-amber-50 px-4 py-6 flex items-center justify-center">
+      <div className="w-full max-w-xl rounded-3xl bg-white/90 p-6 shadow-2xl ring-1 ring-black/5 backdrop-blur sm:p-8">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-sky-600">Upload</p>
+            <h1 className="mt-1 text-3xl font-bold text-zinc-900">写真を投稿</h1>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              見入った地元の魅力を、その場でギャラリーに追加できます。
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="shrink-0 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+          >
+            サイネージへ戻る
+          </Link>
+        </div>
 
         {success && (
           <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
@@ -189,11 +232,7 @@ export default function UploadPage() {
                   onClick={() => {
                     setPreview(null)
                     setSelectedFile(null)
-                    setCameraActive(false)
-                    if (videoRef.current?.srcObject) {
-                      const stream = videoRef.current.srcObject as MediaStream
-                      stream.getTracks().forEach((track) => track.stop())
-                    }
+                    stopCamera()
                   }}
                   className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg font-semibold transition"
                 >

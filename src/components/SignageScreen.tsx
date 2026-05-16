@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Photo } from '@/types'
-import { getAllPhotos, getTopPhotos, recordViewTime } from '@/lib/api'
-import * as faceapi from 'face-api.js'
+import { getAllPhotos, recordViewTime } from '@/lib/api'
 
 interface DisplayPhoto extends Photo {
   isTopPhoto?: boolean
@@ -15,30 +15,8 @@ export default function SignageScreen() {
   const [displayQueue, setDisplayQueue] = useState<DisplayPhoto[]>([])
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [cameraActive, setCameraActive] = useState(false)
-  const [facesDetected, setFacesDetected] = useState(false)
-  
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const photoStartTimeRef = useRef<number>(0)
-  const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const slideTimerRef = useRef<NodeJS.Timeout | null>(null)
-
-  // モデルロード
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-          faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-        ])
-        console.log('Face-API models loaded')
-      } catch (error) {
-        console.error('Failed to load face-api models:', error)
-      }
-    }
-    loadModels()
-  }, [])
 
   // 初期化：写真を取得してキューを構築
   useEffect(() => {
@@ -77,41 +55,6 @@ export default function SignageScreen() {
     photoStartTimeRef.current = Date.now()
   }, [])
 
-  // カメラ初期化
-  const initCamera = useCallback(async () => {
-    if (!videoRef.current) return
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-      })
-      videoRef.current.srcObject = stream
-      setCameraActive(true)
-      startFaceDetection()
-    } catch (error) {
-      console.error('Camera error:', error)
-    }
-  }, [])
-
-  // 顔検出ループ
-  const startFaceDetection = useCallback(() => {
-    if (detectionIntervalRef.current) clearInterval(detectionIntervalRef.current)
-
-    detectionIntervalRef.current = setInterval(async () => {
-      if (!videoRef.current || !canvasRef.current) return
-
-      try {
-        const detections = await faceapi.detectAllFaces(
-          videoRef.current,
-          new faceapi.TinyFaceDetectorOptions()
-        )
-        setFacesDetected(detections.length > 0)
-      } catch (error) {
-        console.error('Face detection error:', error)
-      }
-    }, 100)
-  }, [])
-
   // スライド切替時に前の写真の視聴時間を記録
   const handlePhotoChange = useCallback(async () => {
     if (displayQueue.length === 0) return
@@ -146,17 +89,11 @@ export default function SignageScreen() {
     }
   }, [displayQueue, handlePhotoChange])
 
-  // カメラ初期化
-  useEffect(() => {
-    if (!loading) {
-      initCamera()
-    }
-  }, [loading, initCamera])
-
   if (loading) {
     return (
-      <div className="w-full h-screen flex items-center justify-center bg-black">
-        <p className="text-white text-2xl">読み込み中...</p>
+      <div className="w-full h-screen flex flex-col items-center justify-center bg-black gap-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-600 border-t-white"></div>
+        <div className="text-white text-xl">写真を読み込み中...</div>
       </div>
     )
   }
@@ -180,20 +117,9 @@ export default function SignageScreen() {
         )}
       </div>
 
-      {/* 顔検出カメラ（非表示） */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className="hidden"
-        style={{ display: 'none' }}
-      />
-      <canvas ref={canvasRef} className="hidden" />
-
       {/* ステータス表示 */}
       <div className="absolute top-4 right-4 text-white text-sm bg-black bg-opacity-50 px-4 py-2 rounded">
-        <p>視線検出: {facesDetected ? '✓ 中' : '✗'}</p>
+        <p>サイネージ稼働中</p>
         <p>写真: {currentPhotoIndex + 1} / {displayQueue.length}</p>
         {currentPhoto?.isTopPhoto && (
           <p className="text-yellow-400 font-bold">★ 人気の写真</p>
@@ -209,6 +135,13 @@ export default function SignageScreen() {
           height={120}
         />
       </div>
+
+      <Link
+        href="/upload"
+        className="absolute bottom-4 left-4 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-zinc-900 shadow-lg transition hover:bg-white"
+      >
+        写真を投稿する
+      </Link>
 
       {/* CSS for fade animation */}
       <style jsx>{`
