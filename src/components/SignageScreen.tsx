@@ -82,7 +82,7 @@ export default function SignageScreen() {
 
     slideTimerRef.current = setInterval(() => {
       handlePhotoChange()
-    }, 5000)
+    }, 10000)
 
     return () => {
       if (slideTimerRef.current) clearInterval(slideTimerRef.current)
