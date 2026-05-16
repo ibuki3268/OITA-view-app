@@ -14,3 +14,4 @@ export const viewport = {
 
 export default function Home() {
   return <SignageScreen />
+}
