@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { uploadPhoto, savePhotoToDb } from '@/lib/api'
 
-const MAX_FILE_SIZE = 500 * 1024
+const MAX_FILE_SIZE = 5 * 1024 * 1024
 
 export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -33,7 +33,7 @@ export default function UploadPage() {
       if (file.size > MAX_FILE_SIZE) {
         setSelectedFile(null)
         setPreview(null)
-        setError('画像は500KB以下にしてください')
+        setError('画像は5MB以下にしてください')
         e.target.value = ''
         return
       }
@@ -88,7 +88,7 @@ export default function UploadPage() {
       if (blob) {
         const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' })
         if (file.size > MAX_FILE_SIZE) {
-          setError('撮影した画像が500KBを超えました。もう一度撮影してください')
+          setError('撮影した画像が5MBを超えました。もう一度撮影してください')
           stopCamera()
           return
         }
@@ -173,19 +173,25 @@ export default function UploadPage() {
         <form onSubmit={handleUpload} className="space-y-4">
           {/* プレビュー */}
           {preview && (
-            <div className="mb-4">
-              <img src={preview} alt="Preview" className="w-full rounded-lg object-cover h-64" />
+            <div className="mb-4 overflow-hidden rounded-2xl bg-zinc-100 shadow-sm">
+              <div className="relative aspect-[4/3] w-full">
+                <img
+                  src={preview}
+                  alt="Preview"
+                  className="absolute inset-0 h-full w-full object-contain"
+                />
+              </div>
             </div>
           )}
 
           {/* カメラプレビュー */}
           {cameraActive && (
-            <div className="mb-4 relative">
+            <div className="mb-4 relative overflow-hidden rounded-2xl bg-black aspect-[4/3]">
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
-                className="w-full rounded-lg"
+                className="h-full w-full object-cover"
               />
               <button
                 type="button"

@@ -103,14 +103,14 @@ export default function SignageScreen() {
   return (
     <div className="w-full h-screen bg-black overflow-hidden relative">
       {/* 写真スライドショー */}
-      <div className="w-full h-full relative">
+      <div className="w-full h-full relative p-4">
         {currentPhoto && (
-          <div key={currentPhoto.id} className="animate-fadeInOut w-full h-full">
+          <div key={currentPhoto.id} className="animate-fadeInOut w-full h-full relative bg-black">
             <Image
               src={currentPhoto.image_url}
               alt="Displayed photo"
               fill
-              className="object-cover"
+              className="object-contain"
               priority
             />
           </div>
